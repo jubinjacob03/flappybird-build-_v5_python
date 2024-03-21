@@ -1,132 +1,235 @@
-// App.js
+import styled from "styled-components";
+import { useEffect, useState } from "react";
+import { useCookies } from "react-cookie";
 
-import React, { useState, useEffect } from 'react';
-import Bird from './components/Bird';
-import Pipes from './components/Pipes';
-import './App.css';
+const BIRD_HEIGHT = 50;
+const BIRD_WIDTH = 160;
+const WALL_HEIGHT = 600;
+const WALL_WIDTH = 1400;
+const OBJ_WIDTH = 52;
+const INITIAL_OBJ_GAP = 90; // Initial gap between pipes
+const MIN_OBJ_GAP = 90; // Minimum gap between pipes
+const INITIAL_OBJ_POS = WALL_WIDTH;
+const MIN_OBJ_POS = -OBJ_WIDTH; // Minimum pipe position
+const BASE_OBJ_SPEED = 20; // Initial object speed
+const MOVE_STEP = 10; // Step size for manual bird movement
 
-const App = () => {
-    const [birdPosition, setBirdPosition] = useState({ x: 50, y: 200 });
-    const [pipes, setPipes] = useState([]);
-    const [gameOver, setGameOver] = useState(false);
-    const [score, setScore] = useState(0);
-    const [gameStarted, setGameStarted] = useState(false);
+const calculateNextGap = (score) => Math.max(MIN_OBJ_GAP, INITIAL_OBJ_GAP - score * 5);
 
-    const jump = () => {
-        if (!gameOver && gameStarted) {
-            setBirdPosition((prev) => ({ ...prev, y: prev.y - 100 })); // Increase jump height
-        } else if (!gameOver && !gameStarted) {
-            // Start the game on the first jump
-            setGameStarted(true);
-        }
-    };
+function App() {
+  const [isStart, setIsStart] = useState(false);
+  const [birdPos, setBirdPos] = useState(WALL_HEIGHT / 2 - BIRD_HEIGHT / 2); // Start bird in the middle
+  const [objHeight, setObjHeight] = useState(0);
+  const [objPos, setObjPos] = useState(INITIAL_OBJ_POS);
+  const [score, setScore] = useState(0);
+  const [highestScore, setHighestScore] = useState(0);
+  const [moveUp, setMoveUp] = useState(false);
+  const [moveDown, setMoveDown] = useState(false);
+  const [cookies, setCookie] = useCookies(["highestScore"]);
 
+  const calculateObjectSpeed = (score) => BASE_OBJ_SPEED * 10; // Adjust object speed based on score
+
+  useEffect(() => {
     const handleKeyDown = (event) => {
-        if (event.keyCode === 32) { // Spacebar keycode
-            jump();
-        }
+      if (event.key === "w") {
+        setMoveUp(true);
+      } else if (event.key === "s") {
+        setMoveDown(true);
+      }
     };
 
-    const handleClick = () => {
-        jump();
+    const handleKeyUp = (event) => {
+      if (event.key === "w") {
+        setMoveUp(false);
+      } else if (event.key === "s") {
+        setMoveDown(false);
+      }
     };
 
-    const checkCollision = () => {
-        const birdTop = birdPosition.y;
-        const birdBottom = birdPosition.y + 50;
-        const birdLeft = birdPosition.x;
-        const birdRight = birdPosition.x + 50;
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
 
-        pipes.forEach((pipe) => {
-            const pipeTop = pipe.y;
-            const pipeBottom = pipe.y + 600;
-            const pipeLeft = pipe.x;
-            const pipeRight = pipe.x + 100;
-
-            const isColliding =
-                birdRight > pipeLeft &&
-                birdLeft < pipeRight &&
-                birdBottom > pipeTop &&
-                birdTop < pipeBottom;
-
-            if (isColliding) {
-                if (birdLeft > pipeLeft && birdRight < pipeRight && birdBottom < pipeBottom) {
-                    // Bird has crashed through the pipe, increase score
-                    setScore((prevScore) => prevScore + 1);
-                } else {
-                    // Bird has hit the pipe, end the game
-                    setGameOver(true);
-                    setGameStarted(false);
-                }
-            }
-        });
-
-        // Check if bird is out of the screen vertically
-        if (birdBottom > 800 || birdTop < -170) {
-            // Bird is out of bounds, end the game
-            setGameOver(true);
-            setGameStarted(false);
-        }
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
     };
+  }, []);
 
-    useEffect(() => {
-        document.addEventListener("keydown", handleKeyDown);
-        return () => {
-            document.removeEventListener("keydown", handleKeyDown);
-        };
-    }, []);
+  useEffect(() => {
+    if (cookies.highestScore) {
+      setHighestScore(cookies.highestScore);
+    }
+  }, [cookies.highestScore]);
 
-    useEffect(() => {
-        checkCollision();
-    }, [birdPosition, pipes, gameOver]);
+  useEffect(() => {
+    let intervalId;
 
-    useEffect(() => {
-        const gravity = setInterval(() => {
-            setBirdPosition((prev) => ({ ...prev, y: prev.y + 5 }));
+    const moveObjects = () => {
+      if (isStart) {
+        intervalId = setInterval(() => {
+          // Move object
+          if (objPos >= MIN_OBJ_POS) {
+            setObjPos((prevPos) => prevPos - calculateObjectSpeed(score) / 10); // Adjust object speed
             checkCollision();
-        }, 30);
+          } else {
+            const nextGap = calculateNextGap(score);
+            setObjPos(WALL_WIDTH - 480);
+            setObjHeight(Math.floor(Math.random() * (WALL_HEIGHT - nextGap)));
+            setScore((prevScore) => prevScore + 1);
+          }
 
-        const pipeGenerator = setInterval(() => {
-            if (!gameOver && gameStarted) {
-                setPipes((prev) => [
-                    ...prev,
-                    { x: 400, y: Math.floor(Math.random() * 300) },
-                ]);
-            }
-        }, 2000);
+          // Move bird manually
+          if (moveUp && birdPos > 0) {
+            setBirdPos((prevPos) => prevPos - MOVE_STEP);
+          } else if (moveDown && birdPos < WALL_HEIGHT - BIRD_HEIGHT) {
+            setBirdPos((prevPos) => prevPos + MOVE_STEP);
+          }
+        }, 24);
+      }
+    };
 
-        const pipeMove = setInterval(() => {
-            if (!gameOver && gameStarted) {
-                setPipes((prev) =>
-                    prev.map((pipe) => ({ ...pipe, x: pipe.x - 5 }))
-                );
-            }
-        }, 30);
+    moveObjects();
 
-        return () => {
-            clearInterval(gravity);
-            clearInterval(pipeGenerator);
-            clearInterval(pipeMove);
-        };
-    }, [gameOver, gameStarted]);
+    return () => clearInterval(intervalId);
+  }, [isStart, objPos, score, moveUp, moveDown]);
 
-    return (
-        <div className={`App ${gameOver ? 'game-over' : ''}`} onClick={handleClick} tabIndex={0} onKeyDown={handleKeyDown}>
-            <Bird birdPosition={birdPosition} />
-            {pipes.map((pipe, index) => (
-                <Pipes key={index} pipePosition={pipe} />
-            ))}
-            {gameOver && (
-                <center>
-                    <div className="game-over-message">
-                        Game Over!
-                        <br />
-                        <p style={{ backgroundColor: 'blue', padding: "2px 6px", borderRadius: '5px' }}>Click anywhere or press Spacebar to Restart</p>
-                    </div>
-                </center>
-            )}
-        </div>
-    );
-};
+  const checkCollision = () => {
+    const topObj = birdPos >= 0 && birdPos < objHeight;
+    const bottomObj =
+      birdPos <= WALL_HEIGHT &&
+      birdPos >= WALL_HEIGHT - (WALL_HEIGHT - INITIAL_OBJ_GAP - objHeight) - BIRD_HEIGHT;
+
+    if (
+      (birdPos <= 0 || birdPos >= WALL_HEIGHT - BIRD_HEIGHT) ||
+      ((objPos >= BIRD_WIDTH && objPos <= BIRD_WIDTH + 80) &&
+        ((topObj && birdPos < objHeight) || (bottomObj && birdPos > WALL_HEIGHT - (WALL_HEIGHT - INITIAL_OBJ_GAP - objHeight) - BIRD_HEIGHT)))
+    ) {
+      setIsStart(false);
+      if (score > highestScore) {
+        setHighestScore(score);
+        setCookie("highestScore", score, { path: "/" });
+      }
+      setBirdPos(WALL_HEIGHT / 2 - BIRD_HEIGHT / 2); // Reset bird position
+      setScore(0);
+    }
+  };
+
+  const handleClick = () => {
+    if (!isStart) {
+      setIsStart(true);
+      setBirdPos(WALL_HEIGHT / 2 - BIRD_HEIGHT / 2);
+      setScore(0);
+      setObjPos(INITIAL_OBJ_POS);
+      setObjHeight(0);
+    }
+  };
+
+  return (
+    <Home onClick={handleClick}>
+       <MainTitle>Flappy 9/11</MainTitle>
+      <ScoreContainer>
+        <span>Score: {score}　　</span>
+        <span>Highest: {highestScore}</span>
+      </ScoreContainer>
+      <Background height={WALL_HEIGHT} width={WALL_WIDTH}>
+        {!isStart && <Startboard>Click To Start</Startboard>}
+        <Obj height={objHeight} width={OBJ_WIDTH} left={objPos} top={0} deg={180} />
+        <Bird height={BIRD_HEIGHT} width={BIRD_WIDTH} top={birdPos} left={100} />
+        <Obj
+          height={WALL_HEIGHT - INITIAL_OBJ_GAP - objHeight}
+          width={OBJ_WIDTH}
+          left={objPos}
+          top={WALL_HEIGHT - (objHeight + (WALL_HEIGHT - INITIAL_OBJ_GAP - objHeight))}
+          deg={0}
+        />
+      </Background>
+    </Home>
+  );
+}
 
 export default App;
+
+const Home = styled.div`
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, sans-serif;
+`;
+
+const ScoreContainer = styled.div`
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  color: white;
+  font-size: 20px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+`;
+
+const Background = styled.div`
+  background-image: url("./images/new-york.jpg");
+  background-repeat: no-repeat;
+  background-size: ${(props) => props.width}px ${(props) => props.height}px;
+  width: ${(props) => props.width}px;
+  height: ${(props) => props.height}px;
+  position: relative;
+  overflow: hidden;
+  border: 2px solid black;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
+`;
+
+const Bird = styled.div`
+  position: absolute;
+  background-image: url("./images/yellowbird-upflap.png");
+  background-repeat: no-repeat;
+  background-size: ${(props) => props.width}px ${(props) => props.height}px;
+  width: ${(props) => props.width}px;
+  height: ${(props) => props.height}px;
+  top: ${(props) => props.top}px;
+  left: ${(props) => props.left}px;
+  transition: transform 0.2s ease-in-out;
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
+
+const Obj = styled.div`
+  position: relative;
+  background-image: url("./images/full-pipe.png");
+  width: ${(props) => props.width}px;
+  height: ${(props) => props.height}px;
+  left: ${(props) => props.left}px;
+  top: ${(props) => props.top}px;
+  transition: transform 0.2s ease-in-out;
+  &:hover {
+    transform: scale(1.1);
+  }
+`;
+
+const Startboard = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  padding: 20px;
+  border-radius: 10px;
+  text-align: center;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0px 0px 20px rgba(0, 0, 0, 0.3);
+`;
+
+const MainTitle = styled.h1`
+  position: absolute;
+  top: -25px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 48px;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+`;
+  
