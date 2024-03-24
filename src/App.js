@@ -7,11 +7,11 @@ const BIRD_WIDTH = 160;
 const WALL_HEIGHT = 600;
 const WALL_WIDTH = 1400;
 const OBJ_WIDTH = 52;
-const INITIAL_OBJ_GAP = 90; // Initial gap between pipes
-const MIN_OBJ_GAP = 90; // Minimum gap between pipes
+const INITIAL_OBJ_GAP = 80; // Initial gap between pipes
+const MIN_OBJ_GAP = 80; // Minimum gap between pipes
 const INITIAL_OBJ_POS = WALL_WIDTH;
 const MIN_OBJ_POS = -OBJ_WIDTH; // Minimum pipe position
-const BASE_OBJ_SPEED = 20; // Initial object speed
+const BASE_OBJ_SPEED = 25; // Initial object speed
 const MOVE_STEP = 10; // Step size for manual bird movement
 
 const calculateNextGap = (score) => Math.max(MIN_OBJ_GAP, INITIAL_OBJ_GAP - score * 5);
@@ -119,10 +119,17 @@ function App() {
       setIsStart(true);
       setBirdPos(WALL_HEIGHT / 2 - BIRD_HEIGHT / 2);
       setScore(0);
-      setObjPos(INITIAL_OBJ_POS);
-      setObjHeight(0);
+      // Randomize initial position and height of pipes
+      const nextGap = calculateNextGap(0); // Assuming score is 0 at start
+      const randomHeight = Math.floor(Math.random() * (WALL_HEIGHT - nextGap));
+      const randomPos = Math.floor(Math.random() * (WALL_WIDTH - OBJ_WIDTH)); // Randomize position within the wall width
+      setObjPos(randomPos);
+      setObjHeight(randomHeight);
     }
   };
+  
+  
+  
 
   return (
     <Home onClick={handleClick}>
