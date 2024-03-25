@@ -1,4 +1,4 @@
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useEffect, useState } from "react";
 import { useCookies } from "react-cookie";
 
@@ -14,7 +14,10 @@ const MIN_OBJ_POS = -OBJ_WIDTH; // Minimum pipe position
 const BASE_OBJ_SPEED = 25; // Initial object speed
 const MOVE_STEP = 10; // Step size for manual bird movement
 
-const calculateNextGap = (score) => Math.max(MIN_OBJ_GAP, INITIAL_OBJ_GAP - score * 5);
+const calculateNextGap = (score) => {
+  const nextGap = INITIAL_OBJ_GAP - score * 5;
+  return Math.max(MIN_OBJ_GAP, nextGap);
+};
 
 function App() {
   const [isStart, setIsStart] = useState(false);
@@ -26,6 +29,7 @@ function App() {
   const [moveUp, setMoveUp] = useState(false);
   const [moveDown, setMoveDown] = useState(false);
   const [cookies, setCookie] = useCookies(["highestScore"]);
+  const [showWhiteScreen, setShowWhiteScreen] = useState(false); // State to control white screen
 
   const calculateObjectSpeed = (score) => BASE_OBJ_SPEED * 10; // Adjust object speed based on score
 
@@ -111,6 +115,10 @@ function App() {
       }
       setBirdPos(WALL_HEIGHT / 2 - BIRD_HEIGHT / 2); // Reset bird position
       setScore(0);
+      setShowWhiteScreen(true); // Activate white screen
+      setTimeout(() => {
+        setShowWhiteScreen(false); // Deactivate white screen after 3 seconds
+      }, 3000);
     }
   };
 
@@ -120,25 +128,23 @@ function App() {
       setBirdPos(WALL_HEIGHT / 2 - BIRD_HEIGHT / 2);
       setScore(0);
       // Randomize initial position and height of pipes
-      const nextGap = calculateNextGap(0); // Assuming score is 0 at start
+      const nextGap = calculateNextGap(0); // Calculate next gap based on score
       const randomHeight = Math.floor(Math.random() * (WALL_HEIGHT - nextGap));
       const randomPos = Math.floor(Math.random() * (WALL_WIDTH - OBJ_WIDTH)); // Randomize position within the wall width
       setObjPos(randomPos);
       setObjHeight(randomHeight);
     }
   };
-  
-  
-  
 
   return (
     <Home onClick={handleClick}>
-       <MainTitle>Flappy 9/11</MainTitle>
+      <MainTitle>Flappy 9/11</MainTitle>
       <ScoreContainer>
         <span>Score: {score}　　</span>
         <span>Highest: {highestScore}</span>
       </ScoreContainer>
       <Background height={WALL_HEIGHT} width={WALL_WIDTH}>
+        {showWhiteScreen && <WhiteScreen />}
         {!isStart && <Startboard>Click To Start</Startboard>}
         <Obj height={objHeight} width={OBJ_WIDTH} left={objPos} top={0} deg={180} />
         <Bird height={BIRD_HEIGHT} width={BIRD_WIDTH} top={birdPos} left={100} />
@@ -155,6 +161,7 @@ function App() {
 }
 
 export default App;
+
 
 const Home = styled.div`
   height: 100vh;
@@ -240,3 +247,25 @@ const MainTitle = styled.h1`
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 `;
   
+const punchAnimation = keyframes`
+  0% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(-30px);
+  }
+  100% {
+    transform: translateX(0);
+  }
+`;
+
+const WhiteScreen = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: white;
+  z-index: 9999;
+  animation: ${punchAnimation} 0.3s linear;
+`;
