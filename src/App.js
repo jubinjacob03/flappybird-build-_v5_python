@@ -30,6 +30,7 @@ function App() {
   const [moveDown, setMoveDown] = useState(false);
   const [cookies, setCookie] = useCookies(["highestScore"]);
   const [showWhiteScreen, setShowWhiteScreen] = useState(false); // State to control white screen
+  const [videoUrl, setVideoUrl] = useState(null); // State to hold the URL of the random video
 
   const calculateObjectSpeed = (score) => BASE_OBJ_SPEED * 10; // Adjust object speed based on score
 
@@ -136,6 +137,16 @@ function App() {
     }
   };
 
+  useEffect(() => {
+    if (showWhiteScreen) {
+      // List of MP4 files in the "clips" folder
+      const clips = ["911-clip (1).mp4", "911-clip (2).mp4", "911-clip (3).mp4"];
+      const randomIndex = Math.floor(Math.random() * clips.length);
+      const randomClip = clips[randomIndex];
+      setVideoUrl(`/clips/${randomClip}`);
+    }
+  }, [showWhiteScreen]);
+
   return (
     <Home onClick={handleClick}>
       <MainTitle>Flappy 9/11</MainTitle>
@@ -145,6 +156,12 @@ function App() {
       </ScoreContainer>
       <Background height={WALL_HEIGHT} width={WALL_WIDTH}>
         {showWhiteScreen && <WhiteScreen />}
+        {videoUrl && (
+          <VideoPlayer autoPlay controls>
+            <source src={videoUrl} type="video/mp4" />
+            Your browser does not support the video tag.
+          </VideoPlayer>
+        )}
         {!isStart && <Startboard>Click To Start</Startboard>}
         <Obj height={objHeight} width={OBJ_WIDTH} left={objPos} top={0} deg={180} />
         <Bird height={BIRD_HEIGHT} width={BIRD_WIDTH} top={birdPos} left={100} />
@@ -195,7 +212,7 @@ const Background = styled.div`
 
 const Bird = styled.div`
   position: absolute;
-  background-image: url("./images/yellowbird-upflap.png");
+  background-image: url("./images/plane-bird.png");
   background-repeat: no-repeat;
   background-size: ${(props) => props.width}px ${(props) => props.height}px;
   width: ${(props) => props.width}px;
@@ -210,7 +227,7 @@ const Bird = styled.div`
 
 const Obj = styled.div`
   position: relative;
-  background-image: url("./images/full-pipe.png");
+  background-image: url("./images/twin-tower-pipe.png");
   width: ${(props) => props.width}px;
   height: ${(props) => props.height}px;
   left: ${(props) => props.left}px;
@@ -268,4 +285,12 @@ const WhiteScreen = styled.div`
   background-color: white;
   z-index: 9999;
   animation: ${punchAnimation} 0.3s linear;
+`;
+
+const VideoPlayer = styled.video`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
 `;
